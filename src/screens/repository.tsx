@@ -1,20 +1,22 @@
 import { useNavigation } from '@react-navigation/native'
-import React, { useCallback, useContext } from 'react'
+import React, { useCallback } from 'react'
+import { AsyncStorage } from 'react-native'
 
 import Screen from '../components/screen'
 import TextInput from '../components/text-input'
-import GlobalStateContext from '../utils/global-state-context'
+import { useAsync } from 'react-async'
 
-const INITIAL_REPOSITORY_TEXT = 'repository'
+const REPOSITORY_KEY = '@repository'
+
+const asyncGetRepository = () => AsyncStorage.getItem(REPOSITORY_KEY)
+const asyncSetRepository = ([text]) =>
+	AsyncStorage.setItem(REPOSITORY_KEY, text)
 
 const RepositoryScreen: React.FC = () => {
 	const navigation = useNavigation()
 
-	const [globalState, setGlobalState] = useContext(GlobalStateContext)
-
-	const handleOnChangeText = useCallback((text) => {
-		setGlobalState({ repository: text })
-	}, [])
+	const { data } = useAsync(asyncGetRepository)
+	const { run: handleOnChangeText } = useAsync({ deferFn: asyncSetRepository })
 
 	const handleSubmitEditing = useCallback(() => {
 		navigation.goBack()
@@ -23,7 +25,7 @@ const RepositoryScreen: React.FC = () => {
 	return (
 		<Screen>
 			<TextInput
-				defaultValue={globalState.repository}
+				defaultValue={data}
 				onChangeText={handleOnChangeText}
 				onSubmitEditing={handleSubmitEditing}
 				placeholder='Type a GitHub repository'
@@ -32,4 +34,4 @@ const RepositoryScreen: React.FC = () => {
 	)
 }
 
-export { INITIAL_REPOSITORY_TEXT, RepositoryScreen as default }
+export { REPOSITORY_KEY, RepositoryScreen as default }

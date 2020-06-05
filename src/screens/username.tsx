@@ -1,20 +1,21 @@
 import { useNavigation } from '@react-navigation/native'
-import React, { useCallback, useContext } from 'react'
+import React, { useCallback } from 'react'
+import { useAsync } from 'react-async'
+import { AsyncStorage } from 'react-native'
 
 import Screen from '../components/screen'
 import TextInput from '../components/text-input'
-import GlobalStateContext from '../utils/global-state-context'
 
-const INITIAL_USERNAME_TEXT = 'username'
+const USERNAME_KEY = '@username'
+
+const asyncGetUsername = () => AsyncStorage.getItem(USERNAME_KEY)
+const asyncSetUsername = ([text]) => AsyncStorage.setItem(USERNAME_KEY, text)
 
 const UsernameScreen: React.FC = () => {
 	const navigation = useNavigation()
 
-	const [globalState, setGlobalState] = useContext(GlobalStateContext)
-
-	const handleOnChangeText = useCallback((text) => {
-		setGlobalState({ username: text })
-	}, [])
+	const { data } = useAsync(asyncGetUsername)
+	const { run: handleOnChangeText } = useAsync({ deferFn: asyncSetUsername })
 
 	const handleSubmitEditing = useCallback(() => {
 		navigation.goBack()
@@ -23,7 +24,7 @@ const UsernameScreen: React.FC = () => {
 	return (
 		<Screen>
 			<TextInput
-				defaultValue={globalState.username}
+				defaultValue={data}
 				onChangeText={handleOnChangeText}
 				onSubmitEditing={handleSubmitEditing}
 				placeholder='Type a GitHub username'
@@ -33,4 +34,4 @@ const UsernameScreen: React.FC = () => {
 	)
 }
 
-export { INITIAL_USERNAME_TEXT, UsernameScreen as default }
+export { USERNAME_KEY, UsernameScreen as default }

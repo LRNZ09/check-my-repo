@@ -1,15 +1,20 @@
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useIsFocused } from '@react-navigation/native'
 import axios from 'axios'
-import React, { useCallback, useContext, useState, useEffect } from 'react'
-import { StyleSheet, Text, View, ActivityIndicator } from 'react-native'
+import React, { useCallback, useState, useEffect } from 'react'
+import { useAsync } from 'react-async'
+import {
+	StyleSheet,
+	Text,
+	View,
+	ActivityIndicator,
+	AsyncStorage,
+} from 'react-native'
 import { BorderlessButton } from 'react-native-gesture-handler'
 
 import Button from '../components/button'
 import Screen from '../components/screen'
-import GlobalStateContext from '../utils/global-state-context'
-
-import { INITIAL_USERNAME_TEXT } from './username'
-import { INITIAL_REPOSITORY_TEXT } from './repository'
+import { USERNAME_KEY } from './username'
+import { REPOSITORY_KEY } from './repository'
 
 const styles = StyleSheet.create({
 	container: {
@@ -64,16 +69,23 @@ const styles = StyleSheet.create({
 	},
 })
 
-const HomeScreen: React.FC = () => {
-	const navigation = useNavigation()
+const asyncGetUsernameAndRepository = () =>
+	AsyncStorage.multiGet([USERNAME_KEY, REPOSITORY_KEY])
 
-	const [globalState] = useContext(GlobalStateContext)
+const HomeScreen: React.FC = () => {
+	const isFocused = useIsFocused()
+
+	const navigation = useNavigation()
 
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState(false)
 	const [ghResponseData, setGhResponseData] = useState<{
 		html_url: string
 	} | null>(null)
+
+	const {
+		data: [[, username] = [], [, repository] = []] = [],
+	} = useAsync(asyncGetUsernameAndRepository, { watch: isFocused })
 
 	const handleUserButtonPress = useCallback(() => {
 		navigation.navigate('username')
@@ -86,7 +98,7 @@ const HomeScreen: React.FC = () => {
 	const handleCheckButtonPress = useCallback(async () => {
 		setLoading(true)
 
-		const url = `https://api.github.com/repos/${globalState.username}/${globalState.repository}`
+		const url = `https://api.github.com/repos/${username}/${repository}`
 		try {
 			const response = await axios.get(url)
 			setGhResponseData(response.data)
@@ -96,12 +108,12 @@ const HomeScreen: React.FC = () => {
 		} finally {
 			setLoading(false)
 		}
-	}, [globalState])
+	}, [repository, username])
 
 	const handleSendButtonPress = useCallback(async () => {
 		setLoading(true)
 
-		const url = 'https://pushmore.io/webhook/xnxcEqmr1w7C4zd2C4HLXSjL'
+		const url = 'https://pushmore.io/webhook/d3Gm4aEPCuhAUjfbECLLdW41'
 		await axios.post(url, ghResponseData.html_url)
 
 		setGhResponseData(null)
@@ -113,7 +125,7 @@ const HomeScreen: React.FC = () => {
 	useEffect(() => {
 		setError(false)
 		setGhResponseData(null)
-	}, [globalState])
+	}, [username, repository])
 
 	return (
 		<Screen
@@ -134,10 +146,10 @@ const HomeScreen: React.FC = () => {
 					<Text
 						style={[
 							styles.textURLButtonText,
-							!globalState.username && styles.textURLButtonTextPlaceholder,
+							!username && styles.textURLButtonTextPlaceholder,
 						]}
 					>
-						{globalState.username || INITIAL_USERNAME_TEXT}
+						{username || 'username'}
 					</Text>
 				</BorderlessButton>
 			</View>
@@ -150,10 +162,10 @@ const HomeScreen: React.FC = () => {
 					<Text
 						style={[
 							styles.textURLButtonText,
-							!globalState.repository && styles.textURLButtonTextPlaceholder,
+							!repository && styles.textURLButtonTextPlaceholder,
 						]}
 					>
-						{globalState.repository || INITIAL_REPOSITORY_TEXT}
+						{repository || 'repository'}
 					</Text>
 				</BorderlessButton>
 			</View>
@@ -172,7 +184,7 @@ const HomeScreen: React.FC = () => {
 				<ActivityIndicator style={styles.loading} size='large' />
 			) : (
 				<Button
-					disabled={!(globalState.username && globalState.repository)}
+					disabled={!(username && repository)}
 					onPress={
 						ghResponseData ? handleSendButtonPress : handleCheckButtonPress
 					}
